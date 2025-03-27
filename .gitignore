@@ -19,3 +19,5 @@ personal.auto.tfvars
 *copy*
 
 terraform.tfvars
+
+!.terraformrc
