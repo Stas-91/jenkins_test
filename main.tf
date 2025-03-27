@@ -1,49 +1,92 @@
-terraform {
-    required_providers {
-        yandex = {
-            source = "yandex-cloud/yandex"
-        }
-    }
+module "vpc_dev" {
+  source       = "./modules/vpc"
+  network_name = var.vpc_configs.dev.network_name
+  subnets      = var.vpc_configs.dev.subnets
 }
 
-provider "yandex" {
-  token                    = var.token
-  cloud_id                 = "b1g8ta6qu7na0ir2khnv"
-  folder_id                = "b1g8kve3609ag8bp327e"
+module "vpc_prod" {
+  source       = "./modules/vpc"
+  network_name = var.vpc_configs.prod.network_name
+  subnets      = var.vpc_configs.prod.subnets
 }
 
-variable "token" {
-  type = string
+data "template_file" "cloudinit" {
+  template = file("./cloud-init.tpl")
+  vars = {
+    username  = var.vm_common.username
+    ssh_key1  = var.ssh_public_key
+    packages  = jsonencode(var.vm_common.packages)
+    runcmd    = var.vm_common.runcmd
+  }
 }
 
-variable "ssh_public_key" { 
-  type = string
-}
-
-resource "yandex_compute_instance" "test1" {
-  name = "test1"
-  zone = "ru-central1-a"
-  resources {
-    cores  = 2
-    memory = 2
-  }
-  boot_disk {
-    initialize_params {
-      image_id = "fd80mrhj8fl2oe87o4e1"
-      size = 10
-      type = "network-ssd"
-    }
-  }
-  network_interface {
-    subnet_id = "e9bab1n890lkhh5rnjg5"
-    nat       = true
-  }
-
-  scheduling_policy {
-    preemptible = true        # Указание, что ВМ прерываемая
-  }
-
+module "marketing_vm" {
+  source         = "git::https://github.com/udjin10/yandex_compute_instance.git?ref=main"
+  env_name       = var.vm_instances.marketing.env_name
+  network_id     = module.vpc_dev.network_id
+  subnet_zones   = var.vm_instances.marketing.subnet_zones
+  subnet_ids     = [module.vpc_dev.subnet_ids[var.vm_instances.marketing.subnet_zones[0]]]
+  instance_name  = var.vm_instances.marketing.instance_name
+  instance_count = var.vm_instances.marketing.instance_count
+  image_family   = var.vm_common.image_family
+  public_ip      = var.vm_instances.marketing.public_ip
+  labels         = var.vm_instances.marketing.labels
   metadata = {
-    ssh-keys = "ubuntu:${var.ssh_public_key}"
+    user-data          = data.template_file.cloudinit.rendered
+    serial-port-enable = var.vm_common.serial_port_enable
   }
 }
+
+module "analytics_vm" {
+  source         = "git::https://github.com/udjin10/yandex_compute_instance.git?ref=main"
+  env_name       = var.vm_instances.analytics.env_name
+  network_id     = module.vpc_dev.network_id
+  subnet_zones   = var.vm_instances.analytics.subnet_zones
+  subnet_ids     = [module.vpc_dev.subnet_ids[var.vm_instances.analytics.subnet_zones[0]]]
+  instance_name  = var.vm_instances.analytics.instance_name
+  instance_count = var.vm_instances.analytics.instance_count
+  image_family   = var.vm_common.image_family
+  public_ip      = var.vm_instances.analytics.public_ip
+  labels         = var.vm_instances.analytics.labels
+  metadata = {
+    user-data          = data.template_file.cloudinit.rendered
+    serial-port-enable = var.vm_common.serial_port_enable
+  }
+}
+
+# module "mysql_cluster" {
+#   source       = "./modules/mysql_cluster"
+#   cluster_name = var.mysql_config.cluster_name
+#   network_id   = module.vpc_prod.network_id
+#   ha           = var.mysql_config.ha
+# }
+
+# module "mysql_db_user" {
+#   source        = "./modules/mysql_db_user"
+#   cluster_id    = module.mysql_cluster.cluster_id
+#   database_name = var.mysql_config.database_name
+#   username      = var.mysql_config.username
+#   password      = var.mysql_config.password
+#   user_roles    = var.mysql_config.user_roles
+# }
+
+# resource "random_string" "unique_id" {
+#   length  = var.random_string_config.length
+#   upper   = var.random_string_config.upper
+#   lower   = var.random_string_config.lower
+#   numeric = var.random_string_config.numeric
+#   special = var.random_string_config.special
+# }
+
+# module "s3" {
+#   source      = "git::https://github.com/terraform-yc-modules/terraform-yc-s3.git"
+#   bucket_name = "${var.s3_config.bucket_prefix}-${random_string.unique_id.result}"
+#   max_size    = var.s3_config.max_size
+#   versioning  = var.s3_config.versioning
+# }
+
+# resource "vault_kv_secret_v2" "example" {
+#   mount     = var.vault_config.mount
+#   name      = var.vault_config.name
+#   data_json = jsonencode(var.vault_config.data)
+# }
