@@ -6,11 +6,13 @@ pipeline {
     environment {
         YC_TOKEN = credentials('YANDEX_TOKEN')
         SSH_PUBLIC_KEY = credentials('SSH_PUBLIC_KEY')
+        AWS_ACCESS_KEY = credentials('ACCESS_KEY')
+        AWS_SECRET_ACCESS_KEY = credentials('SECRET_ACCESS_KEY')                
     }
     stages {
         stage('Init') {
             steps {
-                sh 'terraform init'
+                sh 'terraform init -backend-config="access_key=$AWS_ACCESS_KEY" -backend-config="secret_key=$AWS_SECRET_ACCESS_KEY"'
             }
         }
         stage('Plan') {
