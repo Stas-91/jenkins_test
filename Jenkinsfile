@@ -1,10 +1,5 @@
 pipeline {
-    agent {
-        docker {
-            image 'hashicorp/terraform:latest'
-            args '--entrypoint='
-        }
-    }
+    agent any
     environment {
         YC_TOKEN = credentials('YANDEX_TOKEN')
         SSH_PUBLIC_KEY = credentials('SSH_PUBLIC_KEY')
