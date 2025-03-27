@@ -16,9 +16,6 @@ pipeline {
             }
         }
         stage('Apply') {
-            when {
-                branch 'master'
-            }
             steps {
                 sh 'terraform apply -auto-approve -var "token=$YC_TOKEN" -var "ssh_public_key=$SSH_PUBLIC_KEY"'
             }
