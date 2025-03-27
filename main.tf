@@ -16,6 +16,10 @@ variable "token" {
   type = string
 }
 
+variable "ssh_public_key" { 
+  type = string
+}
+
 resource "yandex_compute_instance" "test1" {
   name = "test1"
   zone = "ru-central1-a"
@@ -40,6 +44,6 @@ resource "yandex_compute_instance" "test1" {
   }
 
   metadata = {
-    ssh-keys = "ubuntu:${file("~/.ssh/id_ed25519.pub")}"
+    ssh-keys = "ubuntu:${var.ssh_public_key}"
   }
 }
